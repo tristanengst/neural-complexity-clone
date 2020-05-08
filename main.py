@@ -670,14 +670,14 @@ else:
             print(' ')
     else:
         if args.multisentence_test:
-            test_loss = test_evaluate(None, test_data)
+            test_loss, test_surprisal = test_evaluate(None, test_data)
         else:
-            test_loss = test_evaluate(test_sents, test_data)
+            test_loss, test_surprisal = test_evaluate(test_sents, test_data)
         if args.adapt:
             with open(args.adapted_model, 'wb') as f:
                 torch.save(model, f)
     if not args.interact and not args.nopp:
         print('=' * 89)
-        print('| End of testing | test loss {:5.2f} | test ppl {:8.2f}'.format(
-            test_loss, math.exp(test_loss)))
+        print('| End of testing | test loss {:5.2f} | test surprisal {{:5.2f} | test ppl {:8.2f}'.format(
+            test_loss, test_surprisal, math.exp(test_loss)))
         print('=' * 89)
