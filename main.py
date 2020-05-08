@@ -88,7 +88,7 @@ parser.add_argument('--collapse_nums_flag', action='store_true',
                     help='collapse number tokens into a unified <num> token')
 parser.add_argument('--bandit', action='store_true',
                     help='test a adapt using a bandit')
-parser.add_argument('--adapt_frac', default=".5",
+parser.add_argument('--adapt_frac', default=.5,
                     help='test a adapt using a bandit')
 parser.add_argument('--spicy', default=False,
                     help='test a adapt using a bandit')
@@ -536,7 +536,7 @@ def test_evaluate(test_sentences, data_source):
     if args.view_layer >= 0:
         return total_loss / nwords, total_surprisal
     else:
-        return total_loss / len(data_source), total_surprisal / (len(data_source) * adapt_frac)
+        return total_loss / len(data_source), total_surprisal / (len(data_source) * args.adapt_frac)
 
 def spicy_test_evaluate(test_sentences, data_source):
     """ Evaluate at test time (with adaptation, complexity output) """
@@ -544,7 +544,6 @@ def spicy_test_evaluate(test_sentences, data_source):
     if args.adapt:
         # Must disable cuDNN in order to backprop during eval
         torch.backends.cudnn.enabled = False
-    adapt_frac = float(args.adapt_frac)
     model.eval()
     total_loss, nwords, ntokens = 0., 0, len(corpus.dictionary)
 
@@ -591,7 +590,7 @@ def spicy_test_evaluate(test_sentences, data_source):
     if PROGRESS:
         bar = Bar('Processing', max=len(data_source))
 
-    bandified_data_idxs = torch.multinomial(torch.tensor(idx_to_surprisals), int(len(idx_to_surprisals) * adapt_frac), replacement=True)
+    bandified_data_idxs = torch.multinomial(torch.tensor(idx_to_surprisals), int(len(idx_to_surprisals) * args.adapt_frac), replacement=True)
     sentences_ids = [data_source[i] for i in bandified_data_idxs]
     t_sentences = [test_sentences[i] for i in bandified_data_idxs]
     bandified_data = zip(t_sentences, sentences_ids)
@@ -681,7 +680,7 @@ def spicy_test_evaluate(test_sentences, data_source):
     if args.view_layer >= 0:
         return total_loss / nwords, total_surprisal
     else:
-        return total_loss / len(data_source), total_surprisal / (len(data_source) * adapt_frac)
+        return total_loss / len(data_source), total_surprisal / (len(data_source) * args.adapt_frac)
 
 def evaluate(data_source):
     """ Evaluate for validation (no adaptation, no complexity output) """
