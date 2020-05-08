@@ -490,8 +490,10 @@ def test_evaluate(test_sentences, data_source):
             else:
                 # output sentence-level loss
                 if test_sentences:
+                    pass
                     #print(str(sent)+":"+str(loss.item()))
                 else:
+                    pass
                     #print(str(loss.item()))
 
             if args.adapt:
