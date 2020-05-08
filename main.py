@@ -761,6 +761,7 @@ else:
             test_loss, test_surprisal = test_evaluate(None, test_data)
         else:
             print(type(test_sents), test_sents)
+            print(type(test_data), test_data)
             test_loss, test_surprisal = test_evaluate(test_sents, test_data)
         if args.adapt:
             with open(args.adapted_model, 'wb') as f:
