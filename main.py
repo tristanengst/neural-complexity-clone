@@ -90,7 +90,7 @@ parser.add_argument('--bandit', action='store_true',
                     help='test a adapt using a bandit')
 parser.add_argument('--adapt_frac', default=".5",
                     help='test a adapt using a bandit')
-parser.add_argument('--spicy', action='store_false',
+parser.add_argument('--spicy', default=False,
                     help='test a adapt using a bandit')
 
 # Runtime parameters
@@ -598,7 +598,7 @@ def spicy_test_evaluate(test_sentences, data_source):
 
     total_surprisal = 0
     for t_sentence, sent_ids in bandified_data:
-        sent_ids = sent_ids
+        sent_ids = sent_ids.to(device)
         # We predict all words but the first, so determine loss for those
         if test_sentences:
             sent = t_sentence
