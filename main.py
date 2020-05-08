@@ -453,7 +453,7 @@ def test_evaluate(test_sentences, data_source):
         bar = Bar('Processing', max=len(data_source))
 
     total_surprisal = 0
-    idxs = torch.multinomial(torch.ones(int(len(data_source))), int(data_source * args.adapt_frac), replacement=False)
+    idxs = torch.multinomial(torch.ones(intlen(data_source)), int(len(data_source) * args.adapt_frac), replacement=False)
 
     for i in idxs:
         sent_ids = data_source[i].to(device)
