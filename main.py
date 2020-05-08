@@ -400,7 +400,6 @@ def test_get_batch(source):
 
 def test_evaluate(test_sentences, data_source):
     """ Evaluate at test time (with adaptation, complexity output) """
-    assert 1 == 2
 
     # Turn on evaluation mode which disables dropout.
     if args.adapt:
