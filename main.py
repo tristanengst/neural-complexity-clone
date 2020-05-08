@@ -13,6 +13,7 @@ import torch
 import torch.nn as nn
 import data
 import model
+import random
 
 from samplers_nlp import *
 
@@ -155,6 +156,8 @@ parser.add_argument('--softcliptopk', action="store_true",
 args = parser.parse_args()
 
 print("Is spicy: {}".format(args.spicy))
+random.seed(a=0, version=2)
+
 
 if args.interact:
     # If in interactive mode, force complexity output
