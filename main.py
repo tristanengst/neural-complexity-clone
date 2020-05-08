@@ -400,6 +400,8 @@ def test_get_batch(source):
 
 def test_evaluate(test_sentences, data_source):
     """ Evaluate at test time (with adaptation, complexity output) """
+    assert 1 == 2
+
     # Turn on evaluation mode which disables dropout.
     if args.adapt:
         # Must disable cuDNN in order to backprop during eval
@@ -671,6 +673,7 @@ else:
             print("C")
             with open(args.adapted_model, 'wb') as f:
                 torch.save(model, f)
+    print("D")
     if not args.interact and not args.nopp:
         print('=' * 89)
         print('| End of testing | test loss {:5.2f} | test ppl {:8.2f}'.format(
