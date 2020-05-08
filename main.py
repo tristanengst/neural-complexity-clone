@@ -416,11 +416,11 @@ def test_evaluate(test_sentences, data_source):
             args.guessn = ntokens
         sys.stderr.write('Using beamsize: '+str(ntokens)+'\n')
         print("Testing1")
-        sys.stdout.write("Testing2")
+        sys.stderr.write("Testing2")
     else:
         sys.stderr.write('Using beamsize: '+str(args.complexn)+'\n')
         print("Testing1")
-        sys.stdout.write("Testing2")
+        sys.stderr.write("Testing2")
 
     if args.words:
         if not args.nocheader:
