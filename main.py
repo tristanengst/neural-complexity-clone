@@ -360,7 +360,7 @@ def get_complexity(state, obs, sentid):
             # print(args.csep.join([str(word), str(sentid), str(corpuspos), str(len(word)),
             #                       str(float(surp)), str(float(Hs[corpuspos])),
             #                       str(max(0, float(Hs[max(corpuspos-1, 0)])-float(Hs[corpuspos])))]))
-    print("Surprisals", torch.sum(surps.tolist() / len(surps), len(surps))
+    print("Surprisals", sum(surps.tolist() / len(surps), len(surps))
 
 def apply(func, apply_dimension):
     ''' Applies a function along a given dimension '''
