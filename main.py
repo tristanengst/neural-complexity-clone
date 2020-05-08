@@ -360,7 +360,7 @@ def get_complexity(state, obs, sentid):
             # print(args.csep.join([str(word), str(sentid), str(corpuspos), str(len(word)),
             #                       str(float(surp)), str(float(Hs[corpuspos])),
             #                       str(max(0, float(Hs[max(corpuspos-1, 0)])-float(Hs[corpuspos])))]))
-    print("Surprisals", surps, len(surps))
+    print("Surprisals", surps, len(surps), obs)
 
 def apply(func, apply_dimension):
     ''' Applies a function along a given dimension '''
