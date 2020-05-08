@@ -362,7 +362,7 @@ def get_complexity(state, obs, sentid):
             # print(args.csep.join([str(word), str(sentid), str(corpuspos), str(len(word)),
             #                       str(float(surp)), str(float(Hs[corpuspos])),
             #                       str(max(0, float(Hs[max(corpuspos-1, 0)])-float(Hs[corpuspos])))]))
-    print("Surprisals", total_surprisal / len(surps), len(surps))
+    return  total_surprisal / len(surps)
 
 def apply(func, apply_dimension):
     ''' Applies a function along a given dimension '''
@@ -438,6 +438,8 @@ def test_evaluate(test_sentences, data_source):
             sys.stdout.write('\n')
     if PROGRESS:
         bar = Bar('Processing', max=len(data_source))
+
+    total_surprisal = 0
     for i in range(len(data_source)):
         sent_ids = data_source[i].to(device)
         # We predict all words but the first, so determine loss for those
@@ -490,7 +492,8 @@ def test_evaluate(test_sentences, data_source):
             total_loss += loss.item()
             if args.words:
                 # output word-level complexity metrics
-                get_complexity(output_flat, targets, i)
+                surprisal = get_complexity(output_flat, targets, i)
+                total_surprisal += surprisal
             else:
                 # output sentence-level loss
                 if test_sentences:
@@ -517,9 +520,9 @@ def test_evaluate(test_sentences, data_source):
     if PROGRESS:
         bar.finish()
     if args.view_layer >= 0:
-        return total_loss / nwords
+        return total_loss / nwords, total_surprisal
     else:
-        return total_loss / len(data_source)
+        return total_loss / len(data_source), total_surprisal / len(data_source)
 
 def evaluate(data_source):
     """ Evaluate for validation (no adaptation, no complexity output) """
