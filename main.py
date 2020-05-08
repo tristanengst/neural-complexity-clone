@@ -593,7 +593,7 @@ def spicy_test_evaluate(test_sentences, data_source):
     if PROGRESS:
         bar = Bar('Processing', max=len(data_source))
 
-    bandified_data_idxs = torch.multinomial(torch.exp(torch.tensor(idx_to_surprisals)), int(len(idx_to_surprisals) * args.adapt_frac), replacement=True)
+    bandified_data_idxs = torch.multinomial(torch.exp(torch.tensor(idx_to_surprisals)), int(len(idx_to_surprisals) * args.adapt_frac), replacement=False)
     sentences_ids = [data_source[i] for i in bandified_data_idxs]
     t_sentences = [test_sentences[i] for i in bandified_data_idxs]
     bandified_data = zip(t_sentences, sentences_ids)
