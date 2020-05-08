@@ -524,6 +524,94 @@ def test_evaluate(test_sentences, data_source):
     else:
         return total_loss / len(data_source), total_surprisal / len(data_source)
 
+    def spicy_test_evaluate(test_sentences, data_source):
+        """ Evaluate at test time (with adaptation, complexity output) """
+        # Turn on evaluation mode which disables dropout.
+        if args.adapt:
+            # Must disable cuDNN in order to backprop during eval
+            torch.backends.cudnn.enabled = False
+        model.eval()
+        total_loss, nwords, ntokens = 0., 0, ntokens = len(corpus.dictionary)
+
+        if args.complexn > ntokens or args.complexn <= 0:
+            args.complexn = ntokens
+            if args.guessn > ntokens:
+                args.guessn = ntokens
+            sys.stderr.write('Using beamsize: '+str(ntokens)+'\n')
+        else:
+            sys.stderr.write('Using beamsize: '+str(args.complexn)+'\n')
+
+        if args.words:
+            if not args.nocheader:
+                if args.complexn == ntokens:
+                    print('word{0}sentid{0}sentpos{0}wlen{0}surp{0}entropy{0}entred'.format(args.csep), end='')
+                else:
+                    print('word{0}sentid{0}sentpos{0}wlen{0}surp{1}{0}entropy{1}{0}entred{1}'.format(args.csep, args.complexn), end='')
+                if args.guess:
+                    for i in range(args.guessn):
+                        print('{0}guess'.format(args.csep)+str(i), end='')
+                        if args.guessscores:
+                            print('{0}gscore'.format(args.csep)+str(i), end='')
+                        elif args.guessprobs:
+                            print('{0}gprob'.format(args.csep)+str(i), end='')
+                        elif args.guessratios:
+                            print('{0}gratio'.format(args.csep)+str(i), end='')
+                sys.stdout.write('\n')
+        if PROGRESS:
+            bar = Bar('Processing', max=len(data_source))
+
+        total_surprisal = 0
+        for i in range(len(data_source)):
+            sent_ids = data_source[i].to(device)
+            # We predict all words but the first, so determine loss for those
+            if test_sentences:
+                sent = test_sentences[i]
+            hidden = model.init_hidden(1) # number of parallel sentences being processed
+            data, targets = test_get_batch(sent_ids)
+            data = data.unsqueeze(1) # only needed when a single sentence is being processed
+            output, hidden = model(data, hidden)
+            try:
+                output_flat = output.view(-1, ntokens)
+            except RuntimeError:
+                print("Vocabulary Error! Most likely there weren't unks in training and unks are now needed for testing")
+                raise
+            loss = criterion(output_flat, targets)
+            total_loss += loss.item()
+            if args.words:
+                # output word-level complexity metrics
+                surprisal = get_complexity(output_flat, targets, i)
+                total_surprisal += surprisal
+            else:
+                # output sentence-level loss
+                if test_sentences:
+                    pass
+                    #print(str(sent)+":"+str(loss.item()))
+                else:
+                    pass
+                    #print(str(loss.item()))
+
+            if args.adapt:
+                loss.backward()
+
+                # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
+                torch.nn.utils.clip_grad_norm(model.parameters(), args.clip)
+                for param in model.parameters():
+                    if param.grad is not None:
+                    # only update trainable parameters
+                        param.data.add_(-lr, param.grad.data)
+
+
+            hidden = repackage_hidden(hidden)
+
+            if PROGRESS:
+                bar.next()
+        if PROGRESS:
+            bar.finish()
+        if args.view_layer >= 0:
+            return total_loss / nwords, total_surprisal
+        else:
+            return total_loss / len(data_source), total_surprisal / len(data_source)
+
 def evaluate(data_source):
     """ Evaluate for validation (no adaptation, no complexity output) """
     # Turn on evaluation mode which disables dropout.
@@ -672,6 +760,7 @@ else:
         if args.multisentence_test:
             test_loss, test_surprisal = test_evaluate(None, test_data)
         else:
+            print(type(test_sents), test_sents)
             test_loss, test_surprisal = test_evaluate(test_sents, test_data)
         if args.adapt:
             with open(args.adapted_model, 'wb') as f:
