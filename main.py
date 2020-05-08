@@ -18,7 +18,8 @@ try:
     from progress.bar import Bar
     PROGRESS = True
 except ModuleNotFoundError:
-    PROGRESS = False
+    pass
+PROGRESS = False
 
 # suppress SourceChangeWarnings
 warnings.filterwarnings("ignore")
