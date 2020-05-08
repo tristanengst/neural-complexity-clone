@@ -531,7 +531,7 @@ def test_evaluate(test_sentences, data_source):
             # Must disable cuDNN in order to backprop during eval
             torch.backends.cudnn.enabled = False
         model.eval()
-        total_loss, nwords, ntokens = 0., 0, ntokens = len(corpus.dictionary)
+        total_loss, nwords, ntokens = 0., 0, len(corpus.dictionary)
 
         if args.complexn > ntokens or args.complexn <= 0:
             args.complexn = ntokens
