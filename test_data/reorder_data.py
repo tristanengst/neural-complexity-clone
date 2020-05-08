@@ -23,12 +23,17 @@ for input in inputs:
         print("Got data from {}".format(input))
 
 # Randomly sort each list within sentences
+num_sentences_per_cat = int(num_sentences / len(sentences))
+print(num_sentences)
+print(len(sentences))
 for k in sentences:
-    sentences[k] = random.sample(sentences[k], len(sentences[k]))
+    sentences[k] = random.choices(sentences[k], k=num_sentences_per_cat)
+    print(sentences[k])
+    print(num_sentences_per_cat)
 
 
 result = []
-for i in range(num_sentences):
+for i in range(num_sentences_per_cat):
     for k in sentences:
         result.append(sentences[k][i])
 
