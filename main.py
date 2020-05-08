@@ -18,8 +18,7 @@ try:
     from progress.bar import Bar
     PROGRESS = True
 except ModuleNotFoundError:
-    pass
-PROGRESS = False
+    PROGRESS = False
 
 # suppress SourceChangeWarnings
 warnings.filterwarnings("ignore")
@@ -401,7 +400,6 @@ def test_get_batch(source):
 
 def test_evaluate(test_sentences, data_source):
     """ Evaluate at test time (with adaptation, complexity output) """
-
     # Turn on evaluation mode which disables dropout.
     if args.adapt:
         # Must disable cuDNN in order to backprop during eval
@@ -415,12 +413,8 @@ def test_evaluate(test_sentences, data_source):
         if args.guessn > ntokens:
             args.guessn = ntokens
         sys.stderr.write('Using beamsize: '+str(ntokens)+'\n')
-        print("Testing1")
-        sys.stderr.write("Testing2")
     else:
         sys.stderr.write('Using beamsize: '+str(args.complexn)+'\n')
-        print("Testing1")
-        sys.stderr.write("Testing2")
 
     if args.words:
         if not args.nocheader:
@@ -496,9 +490,9 @@ def test_evaluate(test_sentences, data_source):
             else:
                 # output sentence-level loss
                 if test_sentences:
-                    print(str(sent)+":"+str(loss.item()))
+                    #print(str(sent)+":"+str(loss.item()))
                 else:
-                    print(str(loss.item()))
+                    #print(str(loss.item()))
 
             if args.adapt:
                 loss.backward()
@@ -666,18 +660,13 @@ else:
         except KeyboardInterrupt:
             print(' ')
     else:
-        print("Entered testing!")
         if args.multisentence_test:
-            print("A")
             test_loss = test_evaluate(None, test_data)
         else:
-            print("B")
             test_loss = test_evaluate(test_sents, test_data)
         if args.adapt:
-            print("C")
             with open(args.adapted_model, 'wb') as f:
                 torch.save(model, f)
-    print("D")
     if not args.interact and not args.nopp:
         print('=' * 89)
         print('| End of testing | test loss {:5.2f} | test ppl {:8.2f}'.format(
