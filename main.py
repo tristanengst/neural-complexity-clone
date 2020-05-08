@@ -453,9 +453,9 @@ def test_evaluate(test_sentences, data_source):
         bar = Bar('Processing', max=len(data_source))
 
     total_surprisal = 0
-    for i in range(len(data_source)):
-        if i > int(float(args.adapt_frac) * len(data_source)):
-            break
+    idxs = torch.multinomial(torch.ones(len(data_source)), int(data_source) * args.adapt_frac), replacement=False)
+
+    for i in idxs:
         sent_ids = data_source[i].to(device)
         # We predict all words but the first, so determine loss for those
         if test_sentences:
@@ -593,7 +593,7 @@ def spicy_test_evaluate(test_sentences, data_source):
     if PROGRESS:
         bar = Bar('Processing', max=len(data_source))
 
-    bandified_data_idxs = torch.multinomial(torch.tensor(idx_to_surprisals), int(len(idx_to_surprisals) * args.adapt_frac), replacement=True)
+    bandified_data_idxs = torch.multinomial(torch.exp(torch.tensor(idx_to_surprisals)), int(len(idx_to_surprisals) * args.adapt_frac), replacement=True)
     sentences_ids = [data_source[i] for i in bandified_data_idxs]
     t_sentences = [test_sentences[i] for i in bandified_data_idxs]
     bandified_data = zip(t_sentences, sentences_ids)
