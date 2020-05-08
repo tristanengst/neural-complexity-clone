@@ -14,6 +14,8 @@ import torch.nn as nn
 import data
 import model
 
+from samplers_nlp import *
+
 try:
     from progress.bar import Bar
     PROGRESS = True
@@ -84,6 +86,10 @@ parser.add_argument('--testfname', type=str, default='test.txt',
                     help='name of the test file')
 parser.add_argument('--collapse_nums_flag', action='store_true',
                     help='collapse number tokens into a unified <num> token')
+parser.add_argument('--bandit', action='store_true',
+                    help='test a adapt using a bandit')
+parser.add_argument('--adapt_frac', default=".5",
+                    help='test a adapt using a bandit')
 
 # Runtime parameters
 parser.add_argument('--test', action='store_true',
@@ -441,6 +447,8 @@ def test_evaluate(test_sentences, data_source):
 
     total_surprisal = 0
     for i in range(len(data_source)):
+        if i > int(float(args.adapt_frac) * len(data_source)):
+            break
         sent_ids = data_source[i].to(device)
         # We predict all words but the first, so determine loss for those
         if test_sentences:
@@ -519,55 +527,113 @@ def test_evaluate(test_sentences, data_source):
             bar.next()
     if PROGRESS:
         bar.finish()
+
+
     if args.view_layer >= 0:
         return total_loss / nwords, total_surprisal
     else:
         return total_loss / len(data_source), total_surprisal / len(data_source)
 
-    def spicy_test_evaluate(test_sentences, data_source):
-        """ Evaluate at test time (with adaptation, complexity output) """
-        # Turn on evaluation mode which disables dropout.
-        if args.adapt:
-            # Must disable cuDNN in order to backprop during eval
-            torch.backends.cudnn.enabled = False
-        model.eval()
-        total_loss, nwords, ntokens = 0., 0, len(corpus.dictionary)
+def spicy_test_evaluate(test_sentences, data_source):
+    """ Evaluate at test time (with adaptation, complexity output) """
+    # Turn on evaluation mode which disables dropout.
+    if args.adapt:
+        # Must disable cuDNN in order to backprop during eval
+        torch.backends.cudnn.enabled = False
+    adapt_frac = float(args.adapt_frac)
+    model.eval()
+    total_loss, nwords, ntokens = 0., 0, len(corpus.dictionary)
 
-        if args.complexn > ntokens or args.complexn <= 0:
-            args.complexn = ntokens
-            if args.guessn > ntokens:
-                args.guessn = ntokens
-            sys.stderr.write('Using beamsize: '+str(ntokens)+'\n')
-        else:
-            sys.stderr.write('Using beamsize: '+str(args.complexn)+'\n')
+    if args.complexn > ntokens or args.complexn <= 0:
+        args.complexn = ntokens
+        if args.guessn > ntokens:
+            args.guessn = ntokens
+        sys.stderr.write('Using beamsize: '+str(ntokens)+'\n')
+    else:
+        sys.stderr.write('Using beamsize: '+str(args.complexn)+'\n')
 
-        if args.words:
-            if not args.nocheader:
-                if args.complexn == ntokens:
-                    print('word{0}sentid{0}sentpos{0}wlen{0}surp{0}entropy{0}entred'.format(args.csep), end='')
-                else:
-                    print('word{0}sentid{0}sentpos{0}wlen{0}surp{1}{0}entropy{1}{0}entred{1}'.format(args.csep, args.complexn), end='')
-                if args.guess:
-                    for i in range(args.guessn):
-                        print('{0}guess'.format(args.csep)+str(i), end='')
-                        if args.guessscores:
-                            print('{0}gscore'.format(args.csep)+str(i), end='')
-                        elif args.guessprobs:
-                            print('{0}gprob'.format(args.csep)+str(i), end='')
-                        elif args.guessratios:
-                            print('{0}gratio'.format(args.csep)+str(i), end='')
-                sys.stdout.write('\n')
+    if PROGRESS:
+        bar = Bar('Processing', max=len(data_source))
+
+    idx_to_surprisals = []
+    for i in range(len(data_source)):
+        sent_ids = data_source[i].to(device)
+        # We predict all words but the first, so determine loss for those
+        if test_sentences:
+            sent = test_sentences[i]
+        hidden = model.init_hidden(1) # number of parallel sentences being processed
+        data, targets = test_get_batch(sent_ids)
+        data = data.unsqueeze(1) # only needed when a single sentence is being processed
+        output, hidden = model(data, hidden)
+        try:
+            output_flat = output.view(-1, ntokens)
+        except RuntimeError:
+            print("Vocabulary Error! Most likely there weren't unks in training and unks are now needed for testing")
+            raise
+        loss = criterion(output_flat, targets)
+        total_loss += loss.item()
+        if args.words or args.bandit:
+            # output word-level complexity metrics
+            surprisal = get_complexity(output_flat, targets, i)
+            idx_to_surprisals.append(surprisal)
+
+        hidden = repackage_hidden(hidden)
+
         if PROGRESS:
-            bar = Bar('Processing', max=len(data_source))
+            bar.next()
+    if PROGRESS:
+        bar.finish()
 
-        total_surprisal = 0
-        for i in range(len(data_source)):
-            sent_ids = data_source[i].to(device)
-            # We predict all words but the first, so determine loss for those
-            if test_sentences:
-                sent = test_sentences[i]
-            hidden = model.init_hidden(1) # number of parallel sentences being processed
-            data, targets = test_get_batch(sent_ids)
+    if PROGRESS:
+        bar = Bar('Processing', max=len(data_source))
+
+    bandified_data_idxs = torch.multinomial(torch.tensor(idx_to_surprisals), int(len(idx_to_surprisals) * adapt_frac), replacement=True)
+    sentences_ids = [data_source[i] for i in bandified_data_idxs]
+    t_sentences = [test_sentences[i] for i in bandified_data_idxs]
+    bandified_data = zip(t_sentences, sentences_ids)
+
+    total_surprisal = 0
+    for t_sentence, sent_ids in bandified_data:
+        sent_ids = sent_ids
+        # We predict all words but the first, so determine loss for those
+        if test_sentences:
+            sent = t_sentence
+        hidden = model.init_hidden(1) # number of parallel sentences being processed
+        data, targets = test_get_batch(sent_ids)
+        if args.view_layer >= 0:
+            for word_index in range(data.size(0)):
+                # Starting each batch, detach the hidden state
+                hidden = repackage_hidden(hidden)
+                model.zero_grad()
+
+                word_input = data[word_index].unsqueeze(0).unsqueeze(1)
+                target = targets[word_index].unsqueeze(0)
+                output, hidden = model(word_input, hidden)
+                output_flat = output.view(-1, ntokens)
+                loss = criterion(output_flat, target)
+                total_loss += loss.item()
+                input_word = corpus.dictionary.idx2word[int(word_input.data)]
+                targ_word = corpus.dictionary.idx2word[int(target.data)]
+                nwords += 1
+                if input_word != '<eos>': # not in (input_word,targ_word):
+                    if args.verbose_view_layer:
+                        print(input_word,end=" ")
+                    # don't output <eos> markers to align with input
+                    # output raw activations
+                    if args.view_hidden:
+                        # output hidden state
+                        print(*list(hidden[0][args.view_layer].view(1, -1).data.cpu().numpy().flatten()), sep=' ')
+
+                    elif args.view_emb:
+                        #Get embedding for input word
+                        emb = model.encoder(word_input)
+                        # output embedding
+                        print(*list(emb[0].view(1,-1).data.cpu().numpy().flatten()), sep=' ')
+
+                    else:
+                        # output cell state
+                        print(*list(hidden[1][args.view_layer].view(1, -1).data.cpu().numpy().flatten()), sep=' ')
+        else:
             data = data.unsqueeze(1) # only needed when a single sentence is being processed
             output, hidden = model(data, hidden)
             try:
@@ -600,17 +666,18 @@ def test_evaluate(test_sentences, data_source):
                     # only update trainable parameters
                         param.data.add_(-lr, param.grad.data)
 
+        hidden = repackage_hidden(hidden)
 
-            hidden = repackage_hidden(hidden)
-
-            if PROGRESS:
-                bar.next()
         if PROGRESS:
-            bar.finish()
-        if args.view_layer >= 0:
-            return total_loss / nwords, total_surprisal
-        else:
-            return total_loss / len(data_source), total_surprisal / len(data_source)
+            bar.next()
+    if PROGRESS:
+        bar.finish()
+
+
+    if args.view_layer >= 0:
+        return total_loss / nwords, total_surprisal
+    else:
+        return total_loss / len(data_source), total_surprisal / len(data_source)
 
 def evaluate(data_source):
     """ Evaluate for validation (no adaptation, no complexity output) """
