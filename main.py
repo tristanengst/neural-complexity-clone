@@ -678,6 +678,6 @@ else:
                 torch.save(model, f)
     if not args.interact and not args.nopp:
         print('=' * 89)
-        print('| End of testing | test loss {:5.2f} | test surprisal {{:5.2f} | test ppl {:8.2f}'.format(
+        print('| End of testing | test loss {:5.2f} | test surprisal {:5.2f} | test ppl {:8.2f}'.format(
             test_loss, test_surprisal, math.exp(test_loss)))
         print('=' * 89)
