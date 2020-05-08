@@ -356,9 +356,10 @@ def get_complexity(state, obs, sentid):
                                   str(max(0, float(Hs[max(corpuspos-1, 0)])-float(Hs[corpuspos]))),
                                   str(outputguesses)]))
         else:
-            print(args.csep.join([str(word), str(sentid), str(corpuspos), str(len(word)),
-                                  str(float(surp)), str(float(Hs[corpuspos])),
-                                  str(max(0, float(Hs[max(corpuspos-1, 0)])-float(Hs[corpuspos])))]))
+            pass
+            # print(args.csep.join([str(word), str(sentid), str(corpuspos), str(len(word)),
+            #                       str(float(surp)), str(float(Hs[corpuspos])),
+            #                       str(max(0, float(Hs[max(corpuspos-1, 0)])-float(Hs[corpuspos])))]))
 
 def apply(func, apply_dimension):
     ''' Applies a function along a given dimension '''
