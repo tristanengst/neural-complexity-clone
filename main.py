@@ -90,6 +90,8 @@ parser.add_argument('--bandit', action='store_true',
                     help='test a adapt using a bandit')
 parser.add_argument('--adapt_frac', default=".5",
                     help='test a adapt using a bandit')
+parser.add_argument('--spicy', action='store_false',
+                    help='test a adapt using a bandit')
 
 # Runtime parameters
 parser.add_argument('--test', action='store_true',
@@ -151,6 +153,8 @@ parser.add_argument('--softcliptopk', action="store_true",
                     help='soften non top-k options instead of removing them')
 
 args = parser.parse_args()
+
+print("Is spicy: {}".format(args.spicy))
 
 if args.interact:
     # If in interactive mode, force complexity output
@@ -532,7 +536,7 @@ def test_evaluate(test_sentences, data_source):
     if args.view_layer >= 0:
         return total_loss / nwords, total_surprisal
     else:
-        return total_loss / len(data_source), total_surprisal / len(data_source)
+        return total_loss / len(data_source), total_surprisal / (len(data_source) * adapt_frac)
 
 def spicy_test_evaluate(test_sentences, data_source):
     """ Evaluate at test time (with adaptation, complexity output) """
@@ -677,7 +681,7 @@ def spicy_test_evaluate(test_sentences, data_source):
     if args.view_layer >= 0:
         return total_loss / nwords, total_surprisal
     else:
-        return total_loss / len(data_source), total_surprisal / len(data_source)
+        return total_loss / len(data_source), total_surprisal / (len(data_source) * adapt_frac)
 
 def evaluate(data_source):
     """ Evaluate for validation (no adaptation, no complexity output) """
@@ -827,7 +831,10 @@ else:
         if args.multisentence_test:
             test_loss, test_surprisal = test_evaluate(None, test_data)
         else:
-            test_loss, test_surprisal = test_evaluate(test_sents, test_data)
+            if args.spicy:
+                test_loss, test_surprisal = spicy_test_evaluate(test_sents, test_data)
+            else:
+                test_loss, test_surprisal = test_evaluate(test_sents, test_data)
         if args.adapt:
             with open(args.adapted_model, 'wb') as f:
                 torch.save(model, f)
